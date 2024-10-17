@@ -9,7 +9,7 @@ import idataframe as idf
 # df_sd = idf.DataFrame(pd.read_csv("test-data/sastdes.csv").drop(columns=[]))
 
 
-df_planets = idf.DataFrame(pd.read_csv("test-data/planets.csv").drop(columns=[]))
+df_planets = idf.DataFrame(pd.read_csv("test-data/planets.csv"))
 
 df_planets.register({
     'method': idf.Label,
@@ -24,7 +24,7 @@ df_planets.parse_all()
 
 df = df_planets.df
 
-print(df_planets.df)
+print(df)
 print(df_planets._df_original)
 
 #TODO  deal with np.nan values in dataframe -> Amount   put 'nan|' in regexp
