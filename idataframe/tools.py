@@ -1,5 +1,3 @@
-import signal
-from contextlib import contextmanager
 
 
 __all__ = ['in_notebook', 'display_auto', 'display_ipython', 'display_text', 'display_hide']
@@ -28,7 +26,7 @@ def display_ipython(obj=None, *args, **kwargs):
     from IPython.display import display, HTML
     import warnings
     warnings.filterwarnings('ignore')
-    
+
     if obj is None:
         obj = ''
     if isinstance(obj, str):

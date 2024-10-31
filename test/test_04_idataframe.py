@@ -27,4 +27,6 @@ df = df_planets.df
 print(df)
 print(df_planets._df_original)
 
+from idataframe.base import *
+
 #TODO  deal with np.nan values in dataframe -> Amount   put 'nan|' in regexp

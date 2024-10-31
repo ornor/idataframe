@@ -3,7 +3,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from idataframe.base import *
+from idataframe.base import Value, ValueList
 from idataframe.fields.BaseField import BaseField
 
 __all__ = ['BaseIType']
@@ -93,7 +93,7 @@ class BaseIType(object):
         if not isinstance(str_format, str):
             raise TypeError("`str_format` attribute must be a string (now str_format type is {})".format(type(str_format)))
 
-        def fn_match(value:str) -> ValueMessages:
+        def fn_match(value:str) -> Value:
             m = re.search(regexp, value)
             if m is not None:
                 field_str_values = {}
@@ -102,7 +102,6 @@ class BaseIType(object):
                     field_name = field_fields[0]
                     field_str_to_type_fn = field_fields[1].str_to_type_fn
                     field_post_parse_fn = field_fields[1].post_parse_fn
-                    field_str_value = None
                     try:
                         field_str_values[field_name] = field_post_parse_fn(m.group(field_name))
                         field_values[field_name] = field_str_to_type_fn(field_str_values[field_name])
@@ -116,12 +115,12 @@ class BaseIType(object):
                 return_value = (value, field_values)
                 return Value(return_value)
             else:
-                return ValueMessage(None, 'value can\'t be parsed: {}'.format(value))
+                return Value(None, 'value can\'t be parsed: {}'.format(value))
 
         self._matches_str.append('match {:>2} :: {:<24} :: {}'.format(str(len(self._matches) + 1), name, regexp))
         self._matches.append((name, fn_match))
 
-    def _parse_str_value(self, original_value:str) -> ValueMessages:
+    def _parse_str_value(self, original_value:str) -> Value:
         parsed_value = None
         messages = []
         for match_name, fn in self._matches:
@@ -132,10 +131,10 @@ class BaseIType(object):
                 break
             else:
                 messages = messages + match_messages
-        return ValueMessages(parsed_value, messages)
+        return Value(parsed_value, messages)
 
-    def parse(self, max_values:int=None, max_messages:int=MAX_NR_ERROR_MESSAGES, verbose=True) -> VMList:
-        value_messages_list = VMList()
+    def parse(self, max_values:int=None, max_messages:int=MAX_NR_ERROR_MESSAGES, verbose=True) -> ValueList:
+        value_list = ValueList()
         nr_messages = 0
         self._df[self._series_name] = np.nan
         self._df[self._series_name] = self._df[self._series_name].astype(self._series_type)
@@ -148,23 +147,23 @@ class BaseIType(object):
 
         for index, value in self._df[self.COLUMN_NAME_ORIGINAL].items():
             if max_values is not None and isinstance(max_values, int) and index > max_values:
-                value_messages_list.add(
-                        Message('\nreached maximum number of values, parsing proces aborted...\n\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
+                value_list.add(
+                        Value(None, '\nreached maximum number of values, parsing proces aborted...\n\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
                 break
             if max_messages is not None and isinstance(max_messages, int) and nr_messages > max_messages:
-                value_messages_list.add(
-                        Message('\nreached maximum number of messages, parsing proces aborted...\n\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
+                value_list.add(
+                        Value(None, '\nreached maximum number of messages, parsing proces aborted...\n\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
                 break
 
             value_str = str(value).strip()
             for pre_parse_fn in self._pre_parse_fns:
                 value_str = pre_parse_fn(value_str)
-            value_messages = self._parse_str_value(value_str)
+            value = self._parse_str_value(value_str)
 
-            if len(value_messages.messages) > 0:
-                nr_messages = nr_messages + len(value_messages.messages)
-                value_messages_list.add(value_messages.prefix_messages('index {:>4} :: '.format(index)))
-            parsed_output = value_messages.value
+            if len(value.messages) > 0:
+                nr_messages = nr_messages + len(value.messages)
+                value_list.add(value.prefix_messages('index {:>4} :: '.format(index)))
+            parsed_output = value.value
             if parsed_output is not None:
                 parsed_value, parsed_field_values = parsed_output
                 self._df.loc[index, self._series_name] = parsed_value
@@ -174,13 +173,13 @@ class BaseIType(object):
                     self._df.loc[index, field_name] = field_value
 
             if index == self._df.shape[0] - 1:  # last item
-                value_messages_list.add(
-                        Message('\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
+                value_list.add(
+                        Value(None, '\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
 
         if verbose:
-            print('\n'.join(value_messages_list.messages))
+            print('\n'.join(value_list.messages))
 
-        return value_messages_list
+        return value_list
 
     def __str__(self):
         return 'Dataframe property:\n' + str(self.df)

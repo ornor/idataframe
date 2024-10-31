@@ -655,9 +655,9 @@
                           <y:Geometry height="52.940760629292356" width="106.8265120780053" x="2380.7518233260766" y="-1341.090247700448"/>
                           <y:Fill hasColor="false" transparent="false"/>
                           <y:BorderStyle hasColor="false" type="line" width="1.0"/>
-                          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="italic" hasBackgroundColor="false" hasLineColor="false" height="48.103515625" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#999999" verticalTextPosition="bottom" visible="true" width="80.388671875" x="13.21892010150259" xml:space="preserve" y="2.4186225021462633">0,  →  monday
-4, →  friday
-5  →  saturday
+                          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="italic" hasBackgroundColor="false" hasLineColor="false" height="48.103515625" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#999999" verticalTextPosition="bottom" visible="true" width="82.392578125" x="12.21696697650259" xml:space="preserve" y="2.4186225021462633">0,  →  Monday
+4, →  Friday
+5  →  Saturday
 <y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
                           <y:StyleProperties>
                             <y:Property class="java.lang.Boolean" name="y.view.ShadowNodePainter.SHADOW_PAINTING" value="true"/>
@@ -684,9 +684,9 @@
                           <y:Geometry height="47.35621682422271" width="93.56322054096529" x="1902.1433897295174" y="-1338.2979757979133"/>
                           <y:Fill hasColor="false" transparent="false"/>
                           <y:BorderStyle hasColor="false" type="line" width="1.0"/>
-                          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="italic" hasBackgroundColor="false" hasLineColor="false" height="48.103515625" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#999999" verticalTextPosition="bottom" visible="true" width="77.0546875" x="8.254266520482588" xml:space="preserve" y="-0.3736494003885582">1,  →  january
-4, →  april
-5  →  may
+                          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="italic" hasBackgroundColor="false" hasLineColor="false" height="48.103515625" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#999999" verticalTextPosition="bottom" visible="true" width="80.388671875" x="6.587274332982588" xml:space="preserve" y="-0.3736494003885582">1,  →  January
+4, →  April
+5  →  May
 <y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
                           <y:StyleProperties>
                             <y:Property class="java.lang.Boolean" name="y.view.ShadowNodePainter.SHADOW_PAINTING" value="true"/>
