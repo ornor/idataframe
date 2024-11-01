@@ -29,4 +29,8 @@ print(df_planets._df_original)
 
 from idataframe.base import *
 
+a = Value(25, ['msg 1', 'msg 2', 'msg 3'])
+b = Value(a, 'msg 4')
+c = Value(None, 'only msg')
+
 #TODO  deal with np.nan values in dataframe -> Amount   put 'nan|' in regexp

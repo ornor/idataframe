@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Generic, TypeVar, Callable, List, Tuple
 
-__all__ = []  # will be extended inside this file
+__all__ = ['Value', 'value_fn']
 
 
 # -----------------------------------------------------------------------------
@@ -11,7 +11,6 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 
-__all__.append('Value')
 class Value(Generic[T]):
     """
     Monad type containing a value and (optional) multiple text messages.
@@ -86,10 +85,76 @@ class Value(Generic[T]):
     def __match__(self, other: Value[T]) -> bool:
         return self.value == other.value
 
+    def __repr__(self) -> str:
+        return 'idataframe.base.Value{}'.format(str(self.items))
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __add__(self, other) -> Value:
+        return self.__class__(self.value + other.value, self.messages + other.messages)
+
+    # object.__add__(self, other)
+    # object.__sub__(self, other)
+    # object.__mul__(self, other)
+    # object.__matmul__(self, other)
+    # object.__truediv__(self, other)
+    # object.__floordiv__(self, other)
+    # object.__mod__(self, other)
+    # object.__divmod__(self, other)
+    # object.__pow__(self, other[, modulo])
+    # object.__lshift__(self, other)
+    # object.__rshift__(self, other)
+    # object.__and__(self, other)
+    # object.__xor__(self, other)
+    # object.__or__(self, other)
+    # object.__radd__(self, other)
+    # object.__rsub__(self, other)
+    # object.__rmul__(self, other)
+    # object.__rmatmul__(self, other)
+    # object.__rtruediv__(self, other)
+    # object.__rfloordiv__(self, other)
+    # object.__rmod__(self, other)
+    # object.__rdivmod__(self, other)
+    # object.__rpow__(self, other[, modulo])
+    # object.__rlshift__(self, other)
+    # object.__rrshift__(self, other)
+    # object.__rand__(self, other)
+    # object.__rxor__(self, other)
+    # object.__ror__(self, other)
+    # object.__iadd__(self, other)
+    # object.__isub__(self, other)
+    # object.__imul__(self, other)
+    # object.__imatmul__(self, other)
+    # object.__itruediv__(self, other)
+    # object.__ifloordiv__(self, other)
+    # object.__imod__(self, other)
+    # object.__ipow__(self, other[, modulo])
+    # object.__ilshift__(self, other)
+    # object.__irshift__(self, other)
+    # object.__iand__(self, other)
+    # object.__ixor__(self, other)
+    # object.__ior__(self, other)
+    # object.__neg__(self)
+    # object.__pos__(self)
+    # object.__abs__(self)
+    # object.__invert__(self)
+    # object.__complex__(self)
+    # object.__index__(self)
+    # object.__round__(self[, ndigits])
+    # object.__trunc__(self)
+    # object.__floor__(self)
+    # object.__ceil__(self)
+
 # -----------------------------------------------------------------------------
 
 
-__all__.append('value_fn')
 def value_fn(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator to create Value binding from function, including error handling.
@@ -109,58 +174,5 @@ def value_fn(func: Callable[..., Any]) -> Callable[..., Any]:
 
     return wrapper
 
-# -----------------------------------------------------------------------------
 
 
-__all__.append('ValueList')
-class ValueList():
-    """
-    List of Values objects.
-    """
-    def __init__(self):
-        self._value_items = []
-
-    def add(self, value:Value) -> ValueList:
-        if not isinstance(value, Value):
-            raise TypeError("value_messages attribute must be a Value object (now value_messages type is {})".format(type(value)))
-
-        self._value_items.append(value)
-        return
-
-    @property
-    def items(self) -> List[Value]:
-        return self._value_items
-
-    @items.setter
-    def items(self, _):
-        raise PermissionError("The items property is read only")
-
-    @property
-    def values(self) -> List[Any]:
-        return [v.value for v in self._value_items if v.value is not None]
-
-    @values.setter
-    def values(self, _):
-        raise PermissionError("The values property is read only")
-
-    @property
-    def messages(self) -> List[Any]:
-        "Concaternate messages of objects."
-        messages_list = []
-        for v in self._value_items:
-            messages_list = messages_list + v.messages
-        return messages_list
-
-    @messages.setter
-    def messages(self, _):
-        raise PermissionError("The messages property is read only")
-
-
-# -----------------------------------------------------------------------------
-
-__all__.append('parse_int')
-def parse_int(value: str) -> Value[int]:
-    try:
-        return Value(int(value))
-    except ValueError:
-        return Value(None)
