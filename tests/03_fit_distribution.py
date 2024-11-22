@@ -12,7 +12,7 @@ def fit(series, *args, **kwargs):
     distribution = balance.fitDistribution()
     return distribution
 
-# sastdes_df = pd.read_csv("test-data/sastdes.csv")
+# sastdes_df = pd.read_csv("data/sastdes.csv")
 # distr = fit(sastdes_df['CO2_int_(ton/capita 2018)'])
 # distr = fit(sastdes_df['G14Lb_size_terrestial_km2'])  # log
 # distr = fit(sastdes_df['UID.latitude'])
@@ -21,22 +21,22 @@ def fit(series, *args, **kwargs):
 # distr = fit(sastdes_df['UID_2020_Population'])
 
 
-# titanic_df = pd.read_csv("test-data/titanic.csv").drop(columns=['PassengerId'])
+# titanic_df = pd.read_csv("data/titanic.csv").drop(columns=['PassengerId'])
 # distr = fit(titanic_df['Fare'])
 # distr = fit(titanic_df['Age'], interval=1.0, distributions='ALL')
 # distr = fit(titanic_df['Pclass'])     # 1, 2 or 3  -> use idf.analyse_data_nominal_ordinal
 
 
-# flights_df = pd.read_csv("test-data/flights.csv").drop(columns=[])
+# flights_df = pd.read_csv("data/flights.csv").drop(columns=[])
 # distr = fit(flights_df['passengers'])                 # cube
 
 
-# diamonds_df = pd.read_csv("test-data/diamonds.csv").drop(columns=[])
+# diamonds_df = pd.read_csv("data/diamonds.csv").drop(columns=[])
 # distr = fit(diamonds_df['depth'])                     # normal
 # distr = fit(diamonds_df['table'], interval=1.0)       # log
 # distr = fit(diamonds_df['price'])
 
-planets_df = pd.read_csv("test-data/planets.csv").drop(columns=[])
+planets_df = pd.read_csv("data/planets.csv").drop(columns=[])
 # distr = fit(planets_df['orbital_period'])             # log
 # distr = fit(planets_df['mass'])                       # cube
 # distr = fit(planets_df['distance'])                   # log

@@ -1,5 +1,3 @@
-
-
 __all__ = ['in_notebook', 'display_auto', 'display_ipython', 'display_text', 'display_hide']
 
 
@@ -51,4 +49,3 @@ def display_text(obj=None, *args, **kwargs):
 
 def display_hide(*args, **kwargs):
     pass
-

@@ -7,7 +7,7 @@ from scipy import stats
 import idataframe as idf
 
 
-# custdf = pd.read_csv("test-data/customers-10000.csv")
+# custdf = pd.read_csv("data/customers-10000.csv")
 # email = idf.Email(custdf['Email'])
 email = idf.Email.from_test_data()
 email.parse()
@@ -17,7 +17,7 @@ label = idf.Label.from_test_data()
 label.parse()
 label_df = label.df
 
-# salesmanhdf = pd.read_csv("test-data/rollingsales-manhattan.csv")
+# salesmanhdf = pd.read_csv("data/rollingsales-manhattan.csv")
 # addr = idf.StreetAddressUS(salesmanhdf['ADDRESS'])
 addr = idf.StreetAddressUS.from_test_data()
 addr.parse()
@@ -35,7 +35,7 @@ rank = idf.Rank.from_test_data()
 rank.parse()
 rank_df = rank.df
 
-# custdf = pd.read_csv("test-data/customers-10000.csv")
+# custdf = pd.read_csv("data/customers-10000.csv")
 # count = idf.Count(custdf['Index'])
 count = idf.Count.from_test_data()
 count.parse()

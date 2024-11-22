@@ -3,7 +3,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from idataframe.base.all import Value, ValueList
+from idataframe.tools import Value, ValueList
 from idataframe.fields.BaseField import BaseField
 
 __all__ = ['BaseIType']

@@ -1,4 +1,4 @@
-from idataframe.tools import *
+from idataframe import tools
 
 from idataframe.itypes.nominal_discrete.Email import *
 from idataframe.itypes.nominal_discrete.Label import *

@@ -1,7 +1,9 @@
 from __future__ import annotations
 from typing import Any, Generic, TypeVar, Callable, List, Tuple
 
-__all__ = ['Value', 'value_fn']
+from idataframe.tools import list_remove_duplicates
+
+__all__ = ['Value', 'value_fn', 'ValueList']
 
 
 # -----------------------------------------------------------------------------
@@ -27,15 +29,22 @@ class Value(Generic[T]):
 
     """
     def __init__(self, value:T=None, messages:List[str]|str=None) -> None:
+        self._value = None
+        self._messages = []
+
         if isinstance(messages, str):   # if only one message is given
             messages = [messages]
 
         if isinstance(value, Value):
             self._value = value._value
-            self._messages = value.messages + messages if len(value.messages) > 0 else (messages if messages is not None else [])
+            _messages = (value.messages + messages
+                              if len(value.messages) > 0
+                              else (messages if messages is not None else []))
+            self._add_messages(_messages)
         else:
             self._value = value
-            self._messages = messages if messages is not None else []
+            _messages = messages if messages is not None else []
+            self._add_messages(_messages)
 
     @property
     def value(self) -> Any:
@@ -44,6 +53,9 @@ class Value(Generic[T]):
     @value.setter
     def value(self, _):
         raise PermissionError("The value property is read only")
+
+    def _add_messages(self, messages:List[str]):
+        self._messages = list_remove_duplicates(self._messages + messages)
 
     @property
     def messages(self) -> List[str]:
@@ -86,7 +98,7 @@ class Value(Generic[T]):
         return self.value == other.value
 
     def __repr__(self) -> str:
-        return 'idataframe.base.Value{}'.format(str(self.items))
+        return 'idataframe.tools.Value{}'.format(str(self.items))
 
     def __str__(self) -> str:
         return str(self.value)
@@ -152,6 +164,7 @@ class Value(Generic[T]):
     # object.__floor__(self)
     # object.__ceil__(self)
 
+
 # -----------------------------------------------------------------------------
 
 
@@ -169,10 +182,55 @@ def value_fn(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return Value(func(*args, **kwargs))
-        except Exception:
-            return Value(None, 'ERROR')   #TODO  name inside error
+        except Exception as e:
+            return Value(None, 'Error Value init: {}'.format(
+                    e.message if hasattr(e, 'message') else e))
 
     return wrapper
 
 
+# -----------------------------------------------------------------------------
+
+
+class ValueList():
+    """
+    List of Values objects.
+    """
+    def __init__(self):
+        self._value_items = []
+
+    def add(self, value:Value) -> ValueList:
+        if not isinstance(value, Value):
+            raise TypeError("value_messages attribute must be a Value object (now value_messages type is {})".format(type(value)))
+
+        self._value_items.append(value)
+        return self
+
+    @property
+    def items(self) -> List[Value]:
+        return self._value_items
+
+    @items.setter
+    def items(self, _):
+        raise PermissionError("The items property is read only")
+
+    @property
+    def values(self) -> List[Any]:
+        return [v.value for v in self._value_items if v.value is not None]
+
+    @values.setter
+    def values(self, _):
+        raise PermissionError("The values property is read only")
+
+    @property
+    def messages(self) -> List[Any]:
+        "Concaternate messages of objects."
+        messages_list = []
+        for v in self._value_items:
+            messages_list = messages_list + v.messages
+        return list_remove_duplicates(messages_list)
+
+    @messages.setter
+    def messages(self, _):
+        raise PermissionError("The messages property is read only")
 
