@@ -82,11 +82,15 @@ class Value(Generic[T]):
         raise PermissionError("The items property is read only")
 
     def prefix_messages(self, prefix:str='') -> Value:
-        self._messages = [str(prefix) + str(message) for message in self._messages]
+        self._messages = [
+                (str(prefix) + str(message) if message != '' else '')
+                for message in self._messages]
         return self
 
     def suffix_messages(self, suffix:str='') -> Value:
-        self._messages = [str(message) + str(suffix) for message in self._messages]
+        self._messages = [
+                (str(message) + str(suffix) if message != '' else '')
+                for message in self._messages]
         return self
 
     def bind(self, func: Callable[[T], Value[U]]) -> Value[T] | Value[U]:
@@ -110,17 +114,82 @@ class Value(Generic[T]):
         return float(self.value)
 
     def __add__(self, other) -> Value:
-        return self.__class__(self.value + other.value, self.messages + other.messages)
+        if isinstance(other, Value):
+            return self.__class__(self.value + other.value,
+                              self.messages + other.messages)
+        else:
+            return self.__class__(self.value + other, self.messages)
 
-    # object.__add__(self, other)
-    # object.__sub__(self, other)
-    # object.__mul__(self, other)
+    def __sub__(self, other) -> Value:
+        if isinstance(other, Value):
+            return self.__class__(self.value - other.value,
+                              self.messages + other.messages)
+        else:
+            return self.__class__(self.value - other, self.messages)
+
+    def __mul__(self, other) -> Value:
+        if isinstance(other, Value):
+            return self.__class__(self.value * other.value,
+                              self.messages + other.messages)
+        else:
+            return self.__class__(self.value * other, self.messages)
+
+    def __truediv__(self, other) -> Value:
+        if isinstance(other, Value):
+            return self.__class__(self.value / other.value,
+                              self.messages + other.messages)
+        else:
+            return self.__class__(self.value / other, self.messages)
+
+    def __floordiv__(self, other) -> Value:
+        if isinstance(other, Value):
+            return self.__class__(self.value // other.value,
+                              self.messages + other.messages)
+        else:
+            return self.__class__(self.value // other, self.messages)
+
+    def __pow__(self, other) -> Value:
+        if isinstance(other, Value):
+            return self.__class__(self.value ** other.value,
+                              self.messages + other.messages)
+        else:
+            return self.__class__(self.value ** other, self.messages)
+
+    def __mod__(self, other) -> Value:
+        if isinstance(other, Value):
+            return self.__class__(self.value % other.value,
+                              self.messages + other.messages)
+        else:
+            return self.__class__(self.value % other, self.messages)
+
+
+    def __divmod__(self, other) -> Value:
+        if isinstance(other, Value):
+            return self.__class__(divmod(self.value, other.value),
+                              self.messages + other.messages)
+        else:
+            return self.__class__(divmod(self.value, other), self.messages)
+
+    def __neg__(self) -> Value:
+        return self.__class__(-self.value, self.messages)
+
+    def __pos__(self) -> Value:
+        return self.__class__(+self.value, self.messages)
+
+    def __abs__(self) -> Value:
+        return self.__class__(abs(self.value), self.messages)
+
+
+      # object.__invert__(self)
+      # object.__complex__(self)
+      # object.__index__(self)
+      # object.__round__(self[, ndigits])
+      # object.__trunc__(self)
+      # object.__floor__(self)
+      # object.__ceil__(self)
+
+
     # object.__matmul__(self, other)
-    # object.__truediv__(self, other)
-    # object.__floordiv__(self, other)
-    # object.__mod__(self, other)
-    # object.__divmod__(self, other)
-    # object.__pow__(self, other[, modulo])
     # object.__lshift__(self, other)
     # object.__rshift__(self, other)
     # object.__and__(self, other)
@@ -153,16 +222,6 @@ class Value(Generic[T]):
     # object.__iand__(self, other)
     # object.__ixor__(self, other)
     # object.__ior__(self, other)
-    # object.__neg__(self)
-    # object.__pos__(self)
-    # object.__abs__(self)
-    # object.__invert__(self)
-    # object.__complex__(self)
-    # object.__index__(self)
-    # object.__round__(self[, ndigits])
-    # object.__trunc__(self)
-    # object.__floor__(self)
-    # object.__ceil__(self)
 
 
 # -----------------------------------------------------------------------------
@@ -196,8 +255,11 @@ class ValueList():
     """
     List of Values objects.
     """
-    def __init__(self):
+    def __init__(self, values:List[Value]=None):
         self._value_items = []
+        if values is not None:
+            for value in values:
+                self.add(value)
 
     def add(self, value:Value) -> ValueList:
         if not isinstance(value, Value):
@@ -233,4 +295,3 @@ class ValueList():
     @messages.setter
     def messages(self, _):
         raise PermissionError("The messages property is read only")
-

@@ -10,7 +10,11 @@ class TestInit(unittest.TestCase):
         self.z = Value(42, ['asdf1', 'duplicate value', 'asdf2', 'asdf3'])
 
         self.a = ValueList().add(self.x).add(self.y).add(self.z)
+        self.b = ValueList([self.x, self.y, self.z])
 
+    def test_init(self):
+        self.assertEqual(self.a.values, self.b.values)
+        self.assertEqual(self.a.messages, self.b.messages)
 
     def test_items(self):
         self.assertIs(self.a.items[0], self.x)
@@ -21,7 +25,8 @@ class TestInit(unittest.TestCase):
         self.assertEqual(self.a.values, [42, 42, 42])
 
     def test_messages(self):
-        self.assertEqual(self.a.messages, ['duplicate value', 'asdf1', 'asdf2', 'asdf3'])
+        self.assertEqual(self.a.messages, ['duplicate value', 'asdf1',
+                                           'asdf2', 'asdf3'])
 
 
 
