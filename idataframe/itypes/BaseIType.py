@@ -187,6 +187,3 @@ class BaseIType(object):
     @classmethod
     def from_test_data(cls, *args, **kwargs):
         return cls(pd.Series([np.nan]), *args, **kwargs)
-
-
-
