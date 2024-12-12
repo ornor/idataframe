@@ -57,25 +57,27 @@ class TestInit(unittest.TestCase):
 
     def test_stack_pop(self):
         x = Value(42).stack(84).stack(168)
-        y = Value(42, 'asdf1').stack(Value(84, 'asdf2'))
+        y = Value(42, 'asdf1').stack(Value(84, 'asdf2')) ^ x
 
-        self.assertEqual(x.values, Value([168, 84, 42], 'asdf').values)
-        self.assertEqual(x.stack(396).values, [396, 168, 84, 42])
-        self.assertEqual(x.pop(), 396)
-        self.assertEqual(x.values, [168, 84, 42])
-        self.assertEqual(int(x + 2), 170)
-        self.assertEqual((x | 1 | 2 | 3).values, [3, 2, 1, 168, 84, 42])
-
-        self.assertEqual(y.values, [84, 42])
+        self.assertEqual(x.values, Value([42, 84, 168], 'asdf').values)
+        self.assertEqual(x.stack(396).values, [42, 84, 168, 396])
+        self.assertEqual(int(x + 2), 44)
+        self.assertEqual((x ^ 1 ^ 2 ^ 3).values, [42, 84, 168, 396, 1, 2, 3])
+        self.assertEqual(y.values, [42, 84, 42, 84, 168])
         self.assertEqual(y.messages, ['asdf1', 'asdf2'])
+        self.assertEqual(y.stack('asdf').values, [42, 84, 42, 84, 168, 'asdf'])
+        self.assertEqual(Value([1, 2, 3, 4]).pop(2)[0], 1)
+        self.assertEqual(Value([1, 2, 3, 4]).pop(2)[1], 2)
+        self.assertEqual(Value([1, 2, 3, 4]).pop(2)[2], [3, 4])
+
 
     def test_binding(self):
         def double(v:Value) -> Value[int|float]:
             return Value(2*v.value)
 
         self.assertEqual(self.a.bind(double).value, 2*42)
-        self.assertEqual((self.a >> double).value, 2*42)
-        self.assertEqual((Value([42, 1, 2]) >> double).values, [2*42])
+        self.assertEqual((self.a | double).value, 2*42)
+        self.assertEqual((Value([42, 1, 2]) | double).values, [2*42])
 
         def manual_error(v:Value) -> Value[float]:
             if v.value == 0:
@@ -121,6 +123,9 @@ class TestInit(unittest.TestCase):
         self.assertEqual(self.c.suffix_messages('_suffix').messages,
                          Value(self.b.value, ['asdf1_suffix', 'asdf2_suffix',
                                               'asdf3_suffix']).messages)
+
+    def test_copy(self):
+        self.assertTrue(id(self.a) != id(self.a.copy()))
 
     def test_str(self):
         self.assertEqual(str(self.a), '42')

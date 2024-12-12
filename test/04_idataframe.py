@@ -29,19 +29,24 @@ import idataframe.tools as idft
 # print(df_planets._df_original)
 
 
-a = idft.Value(25.4, ['msg 1', 'msg 2', 'msg 3'])
-b = idft.Value(a, 'msg 4')
-c = idft.Value(None, 'only msg')
-d = idft.Value('asdf1', 'msg 1')
-dd = idft.Value('asdf2', 'msg 2')
-
-e = a >> idft.parse_int
-f = b >> idft.parse_int >> idft.double >> idft.double
-g = c >> idft.parse_int >> idft.double
-h = d >> idft.parse_int >> idft.double
-
-i = d | dd
-j = i >> idft.concat    # TODO stack pop  --> i value is empty (because of pop)
 
 
-#TODO  deal with np.nan values in dataframe -> Amount   put 'nan|' in regexp
+
+
+
+
+
+email1 = "^(?P<username>[a-zA-Z][a-zA-Z0-9._%+\-]*)#(?P<domain>[a-zA-Z][a-zA-Z.\-]+\.[a-zA-Z]{2,})$"
+email2 = "^(?P<username>[a-zA-Z][a-zA-Z0-9._%+\-]*)@(?P<domain>[a-zA-Z][a-zA-Z.\-]+\.[a-zA-Z]{2,})$"
+email3 = "^(?P<username>[a-zA-Z][a-zA-Z0-9._%+\-]*)!(?P<domain>[a-zA-Z][a-zA-Z.\-]+\.[a-zA-Z]{2,})$"
+
+
+
+a = ( idft.Value(['j@ravv.nl', 42, 43])
+      | idft.parse_str
+      | idft.match(email1) | idft.form('{username}###{domain}')
+      | idft.match(email2) | idft.form('{username}@@@{domain}')
+      | idft.match(email3) | idft.form('{username}!!!{domain}')
+    )
+
+print(repr(a))

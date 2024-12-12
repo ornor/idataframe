@@ -67,7 +67,7 @@ class Value(Generic[T]):
 
         if isinstance(value, Value):
             if value.value is not None:
-                self._values.insert(0, value.value)
+                self._values.append(value.value)
             _messages = (value.messages + messages
                               if len(value.messages) > 0
                               else (messages if messages is not None else []))
@@ -77,7 +77,7 @@ class Value(Generic[T]):
                 if isinstance(value, list):
                     self._values = value
                 else:
-                    self._values.insert(0, value)
+                    self._values.append(value)
             _messages = messages if messages is not None else []
             self._add_messages(_messages)
 
@@ -100,22 +100,26 @@ class Value(Generic[T]):
         raise PermissionError("The values property is read only")
 
     def stack(self, other) -> Value:
+        return_obj = self.copy()
         if isinstance(other, Value):
-            self._values = other.values + self._values
-            self._add_messages(other.messages)
+            return_obj._values = return_obj._values + other.values
+            return_obj._add_messages(other.messages)
+        elif isinstance(other, list):
+            return_obj._values = return_obj._values + other
         else:
-            self._values.insert(0, other)  # current value becomes second
-        return self
+            return_obj._values.append(other)
+        return return_obj
 
-    def __or__(self, other) -> Value:
-        #  alias of bind method: "|"
+    def __xor__(self, other) -> Value:
+        #  alias of stack method: "^"
         return self.stack(other)
 
-    def pop(self) -> T:
-        if len(self._values) > 0:
-            return self._values.pop(0)   # second value becomes first
-        else:
-            return None
+    def pop(self, count:int) -> tuple:
+        if len(self.values) < count:
+            raise KeyError("Unsufficient amount of values in stack")
+        return_values = self.values[:count]
+        new_stack = self.values[count:]
+        return tuple(return_values + [new_stack])
 
     def _add_messages(self, messages:List[str]):
         self._messages = list_remove_duplicates(self._messages + messages)
@@ -164,6 +168,9 @@ class Value(Generic[T]):
                 for message in self._messages]
         return self
 
+    def copy(self):
+        return self.__class__(self.values, self.messages)
+
     def bind(self, func: Callable[Value, Value]) -> Value:
         try:
             new_value_obj = func(self)
@@ -179,8 +186,8 @@ class Value(Generic[T]):
             return Value(new_value_obj.values,
                          self.messages + new_value_obj.messages)
 
-    def __rshift__(self, func: Callable[Value, Value]) -> Value:
-        #  alias of bind method: ">>"
+    def __or__(self, func: Callable[Value, Value]) -> Value:
+        #  alias of bind method: "|"
         return self.bind(func)
 
     __match_args__ = ("value",)
