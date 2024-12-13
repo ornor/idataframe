@@ -1,13 +1,16 @@
 # from IPython.display import display, HTML
 
-# import numpy as np
-# import pandas as pd
-# import plotnine as pn
+import numpy as np
+import pandas as pd
+import plotnine as pn
 import idataframe as idf
-import idataframe.tools as idft
+import idataframe.tools as it
 
 
 # df_sd = idf.DataFrame(pd.read_csv("data/sastdes.csv").drop(columns=[]))
+
+
+
 
 
 # df_planets = idf.DataFrame(pd.read_csv("data/planets.csv"))
@@ -34,19 +37,31 @@ import idataframe.tools as idft
 
 
 
-
+print()
+print(80*'=')
+print()
 
 email1 = "^(?P<username>[a-zA-Z][a-zA-Z0-9._%+\-]*)#(?P<domain>[a-zA-Z][a-zA-Z.\-]+\.[a-zA-Z]{2,})$"
 email2 = "^(?P<username>[a-zA-Z][a-zA-Z0-9._%+\-]*)@(?P<domain>[a-zA-Z][a-zA-Z.\-]+\.[a-zA-Z]{2,})$"
 email3 = "^(?P<username>[a-zA-Z][a-zA-Z0-9._%+\-]*)!(?P<domain>[a-zA-Z][a-zA-Z.\-]+\.[a-zA-Z]{2,})$"
 
 
-
-a = ( idft.Value(['j@ravv.nl', 42, 43])
-      | idft.parse_str
-      | idft.match(email1) | idft.form('{username}###{domain}')
-      | idft.match(email2) | idft.form('{username}@@@{domain}')
-      | idft.match(email3) | idft.form('{username}!!!{domain}')
+a = it.Value(['j@ravv.nl', 42], dict(foo=True), 'start msg')
+b = (a
+      | it.parse_str
+      | it.match(email1) | it.f_str('{username}###{domain}')
+      | it.match(email2) | it.f_str('{username}@@@{domain}')
+      | it.match(email3) | it.f_str('{username}!!!{domain}')
     )
+print(repr(b))
 
-print(repr(a))
+c = it.Value([None, 34, None], {'foo': 42}, 'msg1') | it.parse_int
+d = c | it.parse_str
+e = d | it.parse_float
+
+print(repr(it.Value([12, 23, 34, 45], None, 'asdf') | it.stack_product))
+print(repr(it.Value(['asdf', ';lkj'], None, 'asdf')
+           | it.stack_reverse | it.stack_concat))
+print(repr(it.Value(['asdf', ';lkj'], None, 'asdf')
+           | it.map_fn(lambda x:2*x)))
+print(repr(c | it.replace_na('yes')))

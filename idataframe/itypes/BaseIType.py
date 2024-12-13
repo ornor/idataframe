@@ -1,9 +1,9 @@
-from typing import Tuple, Callable
+from typing import Tuple, Callable, List
 import re
 import numpy as np
 import pandas as pd
 
-from idataframe.tools import Value, ValueList
+from idataframe.tools import Value, Message, list_remove_duplicates
 from idataframe.fields.BaseField import BaseField
 
 __all__ = ['BaseIType']
@@ -115,7 +115,7 @@ class BaseIType(object):
                 return_value = (value, field_values)
                 return Value(return_value)
             else:
-                return Value(None, 'value can\'t be parsed: {}'.format(value))
+                return Message('value can\'t be parsed: {}'.format(value))
 
         self._matches_str.append('match {:>2} :: {:<24} :: {}'.format(str(len(self._matches) + 1), name, regexp))
         self._matches.append((name, fn_match))
@@ -124,17 +124,19 @@ class BaseIType(object):
         parsed_value = None
         messages = []
         for match_name, fn in self._matches:
-            match_value, match_messages = fn(original_value).prefix_messages('match {:<30} :: '.format(match_name)).items
+            value_obj = fn(original_value).prefix_messages('match {:<30} :: '.format(match_name))
+            match_value = value_obj.value
+            match_messages = value_obj.messages
             if match_value is not None:
                 parsed_value = match_value
                 messages = []
                 break
             else:
                 messages = messages + match_messages
-        return Value(parsed_value, messages)
+        return Value(parsed_value, None, messages)
 
-    def parse(self, max_values:int=None, max_messages:int=MAX_NR_ERROR_MESSAGES, verbose=True) -> ValueList:
-        value_list = ValueList()
+    def parse(self, max_values:int=None, max_messages:int=MAX_NR_ERROR_MESSAGES, verbose=True) -> List[Value]:
+        value_list = []
         nr_messages = 0
         self._df[self._series_name] = np.nan
         self._df[self._series_name] = self._df[self._series_name].astype(self._series_type)
@@ -147,12 +149,12 @@ class BaseIType(object):
 
         for index, value in self._df[self.COLUMN_NAME_ORIGINAL].items():
             if max_values is not None and isinstance(max_values, int) and index > max_values:
-                value_list.add(
-                        Value(None, '\nreached maximum number of values, parsing proces aborted...\n\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
+                value_list.append(
+                        Message('\nreached maximum number of values, parsing proces aborted...\n\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
                 break
             if max_messages is not None and isinstance(max_messages, int) and nr_messages > max_messages:
-                value_list.add(
-                        Value(None, '\nreached maximum number of messages, parsing proces aborted...\n\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
+                value_list.append(
+                        Message('\nreached maximum number of messages, parsing proces aborted...\n\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
                 break
 
             value_str = str(value).strip()
@@ -162,7 +164,7 @@ class BaseIType(object):
 
             if len(value.messages) > 0:
                 nr_messages = nr_messages + len(value.messages)
-                value_list.add(value.prefix_messages('index {:>4} :: '.format(index)))
+                value_list.append(value.prefix_messages('index {:>4} :: '.format(index)))
             parsed_output = value.value
             if parsed_output is not None:
                 parsed_value, parsed_field_values = parsed_output
@@ -173,11 +175,14 @@ class BaseIType(object):
                     self._df.loc[index, field_name] = field_value
 
             if index == self._df.shape[0] - 1:  # last item
-                value_list.add(
-                        Value(None, '\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
+                value_list.append(Message('\nusing matches:\n{}\n'.format('\n'.join(self._matches_str))))
 
         if verbose:
-            print('\n'.join(value_list.messages))
+            messages_list = []
+            for v in value_list:
+                messages_list = messages_list + v.messages
+            messages_list = list_remove_duplicates(messages_list)
+            print('\n'.join(messages_list))
 
         return value_list
 

@@ -1,36 +1,39 @@
 from __future__ import annotations
-from typing import Any, Generic, TypeVar, Callable, List, Tuple
-import sys
+from typing import Generic, TypeVar, Callable, List
 
 import numpy as np
 import pandas as pd
 
 from idataframe.tools import list_remove_duplicates
 
-__all__ = ['str_na', 'int_na', 'float_na', 'is_na',
-           'Value', 'ValueList']
+__all__ = ['na', 'is_na',
+           'Value', 'Message']
 
 
 # -----------------------------------------------------------------------------
 
 
-str_na = str(pd.NA)
-int_na = -sys.maxsize
-float_na = np.nan
-series_na = pd.NA
-
+na = pd.NA
 
 def is_na(value:str|int|float|Value) -> bool:
-    if isinstance(value, str):
-        return value == str_na
+    if value is None or value is na:
+        return True
+    elif isinstance(value, str):
+        return value == ''
     elif isinstance(value, int):
-        return value == int_na
+        return pd.isna(value)
     elif isinstance(value, float):
         return np.isnan(value)
     elif isinstance(value, Value):
-        return value.value is None
+        return is_na(value.value)
     else:
-        return np.isnan(value) or pd.isna(value)
+        try:
+            return pd.isna(value)
+        except:
+            try:
+                return np.isnan(value)
+            except:
+                return False
 
 
 # -----------------------------------------------------------------------------
@@ -42,21 +45,17 @@ U = TypeVar("U")
 
 class Value(Generic[T]):
     """
-    Kind of monad type containing a value and (optional) multiple text messages.
+    Kind of monad type containing a value, metadata and (optional) multiple
+    text messages.
 
     Based on: https://github.com/ArjanCodes/examples/blob/main/2023/monad/maybe_railroad_v2.py
 
-
-    only_value = Value(123)
-    only_message = Value(None, 'single message')
-    value_with_multiple_messages = Value(123, ['some', 'messages'])
-    extended_value = Value(value_with_multiple_messages, 'extra')
-    extended_value.value      -->  123
-    extended_value.messages   -->  ['some', 'messages', 'extra']
-
     """
-    def __init__(self, value:T=None, messages:List[str]|str=None) -> None:
+    def __init__(self, value:T=None,
+                       meta:dict=None,
+                       messages:List[str]|str=None) -> None:
         self._values = []
+        self._meta = {}
         self._messages = []
 
         if isinstance(messages, str):   # if only one message is given
@@ -71,7 +70,11 @@ class Value(Generic[T]):
             _messages = (value.messages + messages
                               if len(value.messages) > 0
                               else (messages if messages is not None else []))
-            self._add_messages(_messages)
+            self._messages = list_remove_duplicates(self._messages + _messages)
+            if meta is None:
+                self._meta = value.meta
+            else:
+                self._meta = {**value.meta, **meta}
         else:
             if value is not None:
                 if isinstance(value, list):
@@ -79,7 +82,9 @@ class Value(Generic[T]):
                 else:
                     self._values.append(value)
             _messages = messages if messages is not None else []
-            self._add_messages(_messages)
+            self._messages = list_remove_duplicates(self._messages + _messages)
+            if meta is not None:
+                self._meta = meta
 
     @property
     def value(self) -> T:
@@ -99,31 +104,6 @@ class Value(Generic[T]):
     def values(self, _):
         raise PermissionError("The values property is read only")
 
-    def stack(self, other) -> Value:
-        return_obj = self.copy()
-        if isinstance(other, Value):
-            return_obj._values = return_obj._values + other.values
-            return_obj._add_messages(other.messages)
-        elif isinstance(other, list):
-            return_obj._values = return_obj._values + other
-        else:
-            return_obj._values.append(other)
-        return return_obj
-
-    def __xor__(self, other) -> Value:
-        #  alias of stack method: "^"
-        return self.stack(other)
-
-    def pop(self, count:int) -> tuple:
-        if len(self.values) < count:
-            raise KeyError("Unsufficient amount of values in stack")
-        return_values = self.values[:count]
-        new_stack = self.values[count:]
-        return tuple(return_values + [new_stack])
-
-    def _add_messages(self, messages:List[str]):
-        self._messages = list_remove_duplicates(self._messages + messages)
-
     @property
     def messages(self) -> List[str]:
         return self._messages
@@ -141,20 +121,55 @@ class Value(Generic[T]):
         raise PermissionError("The message property is read only")
 
     @property
-    def items(self) -> Tuple[T, List[str]]:
-        return self.value, self.messages
+    def meta(self) -> dict:  #TODO test
+        return self._meta
 
-    @items.setter
-    def items(self, _):
-        raise PermissionError("The items property is read only")
+    @meta.setter
+    def meta(self, _):
+        raise PermissionError("The meta property is read only")
 
-    @property
-    def items_all(self) -> Tuple[T, List[str]]:
-        return self.values, self.messages
+    def __getitem__(self, key):   #TODO test
+        if key not in self._meta:
+            return None
+        else:
+            return self._meta[key]
 
-    @items_all.setter
-    def items_all(self, _):
-        raise PermissionError("The items_all property is read only")
+    def __setitem__(self, key, value):   #TODO test
+        self._meta[key] = value
+
+    def __delitem__(self, key):   #TODO test
+        del self._meta[key]
+
+    def __contains__(self, key):   #TODO test
+        return key in self.meta
+
+    def stack(self, other) -> Value:
+        return_obj = self.copy()
+        if isinstance(other, Value):
+            return_obj._values = return_obj._values + other.values
+            return_obj._meta = {**return_obj._meta, **other.meta}
+            return_obj._messages = list_remove_duplicates(
+                                        return_obj._messages + other.messages)
+        elif isinstance(other, list):
+            return_obj._values = return_obj._values + other
+        else:
+            return_obj._values.append(other)
+        return return_obj
+
+    def __xor__(self, other) -> Value:
+        #  alias of stack method: "^"
+        return self.stack(other)
+
+    def unstack(self, count:int) -> tuple:
+        if len(self.values) < count:
+            count_missing = count - len(self.values)
+            new_stack = []
+            none_stack = self.values + [
+                None for _ in range(count_missing)] + [new_stack]
+            return tuple(none_stack)
+        return_values = self.values[:count]
+        new_stack = self.values[count:]
+        return tuple(return_values + [new_stack])
 
     def prefix_messages(self, prefix:str='') -> Value:
         self._messages = [
@@ -169,7 +184,7 @@ class Value(Generic[T]):
         return self
 
     def copy(self):
-        return self.__class__(self.values, self.messages)
+        return self.__class__(self.values, self.meta, self.messages)
 
     def bind(self, func: Callable[Value, Value]) -> Value:
         try:
@@ -177,13 +192,16 @@ class Value(Generic[T]):
         except Exception as e:
             messages = self.messages + ['Error: {}'.format(
                             e.message if hasattr(e, 'message') else e)]
-            return Value(self.values, messages) # only message, keep old values
+            # only message, keep old values
+            return Value(self.values, self.meta, messages)
 
         if new_value_obj.value is None: # only message, keep old values
             return Value(self.values,
+                         {**self.meta, **new_value_obj.meta},
                          self.messages + new_value_obj.messages)
         else:
             return Value(new_value_obj.values,
+                         {**self.meta, **new_value_obj.meta},
                          self.messages + new_value_obj.messages)
 
     def __or__(self, func: Callable[Value, Value]) -> Value:
@@ -196,40 +214,78 @@ class Value(Generic[T]):
         return self.value == other.value
 
     def __repr__(self) -> str:
-        fmt1 = 'idataframe.tools.Value({}, {})'
-        fmt2 = 'idataframe.tools.Value({})'
+        fmt1 = 'idataframe.tools.Value({})'
+        fmt2 = 'idataframe.tools.Value({}, {})'
+        fmt3 = 'idataframe.tools.Value({}, {}, {})'
         if len(self.values) > 1:
             if len(self.messages) > 1:
-                return fmt1.format(self.values, self.messages)
+                if len(self.meta) > 0:
+                    return fmt3.format(self.values, self.meta, self.messages)
+                else:
+                    return fmt3.format(self.values, None, self.messages)
             elif len(self.messages) == 0:
-                return fmt2.format(self.values)
+                if len(self.meta) > 0:
+                    return fmt2.format(self.values, self.meta)
+                else:
+                    return fmt1.format(self.values)
             else: # 1 message
-                return fmt1.format(self.values, "'" + self.message + "'")
+                if len(self.meta) > 0:
+                    return fmt3.format(self.values, self.meta,
+                                           "'" + self.message + "'")
+                else:
+                    return fmt3.format(self.values, None,
+                                           "'" + self.message + "'")
         else:
             if len(self.messages) > 1:
                 if isinstance(self.value, str):
-                    return fmt1.format("'" + self.value + "'", self.messages)
+                    if len(self.meta) > 0:
+                        return fmt3.format("'" + self.value + "'",
+                                               self.meta, self.messages)
+                    else:
+                        return fmt3.format("'" + self.value + "'",
+                                               None, self.messages)
                 else:
-                    return fmt1.format(self.value, self.messages)
+                    if len(self.meta) > 0:
+                        return fmt3.format(self.value, self.meta,
+                                                           self.messages)
+                    else:
+                        return fmt3.format(self.value, None, self.messages)
             elif len(self.messages) == 0:
                 if isinstance(self.value, str):
-                    return fmt2.format("'" + self.value + "'")
+                    if len(self.meta) > 0:
+                        return fmt2.format("'" + self.value + "'",
+                                                              self.meta)
+                    else:
+                        return fmt1.format("'" + self.value + "'")
                 else:
-                    return fmt2.format(self.value)
+                    if len(self.meta) > 0:
+                        return fmt2.format(self.value, self.meta)
+                    else:
+                        return fmt1.format(self.value)
             else: # 1 message
                 if isinstance(self.value, str):
-                    return fmt1.format("'" + self.value + "'", "'" + self.message + "'")
+                    if len(self.meta) > 0:
+                        return fmt3.format("'" + self.value + "'", self.meta,
+                                           "'" + self.message + "'")
+                    else:
+                        return fmt3.format("'" + self.value + "'", None,
+                                           "'" + self.message + "'")
                 else:
-                    return fmt1.format(self.value, "'" + self.message + "'")
+                    if len(self.meta) > 0:
+                        return fmt3.format(self.value, self.meta,
+                                           "'" + self.message + "'")
+                    else:
+                        return fmt3.format(self.value, None,
+                                           "'" + self.message + "'")
 
     def __str__(self) -> str:
-        return str(self.value) if self.value is not None else str_na
+        return str(self.value)
 
     def __int__(self) -> int:
-        return int(self.value) if self.value is not None else int_na
+        raise PermissionError("Blocked 'int' method. Use 'idataframe.tools.parse_int' method or 'self.value' attribute instead.")
 
     def __float__(self) -> float:
-        return float(self.value) if self.value is not None else float_na
+        raise PermissionError("Blocked 'float' method. Use 'idataframe.tools.parse_float' method or 'self.value' attribute instead.")
 
     def __add__(self, other) -> Value:
         if isinstance(other, Value):
@@ -237,13 +293,14 @@ class Value(Generic[T]):
                  if self.value is not None and other.value is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
+                              {**self.meta, **other.meta},
                               self.messages + other.messages)
         else:
             return self.__class__(([(self.value + other
                  if self.value is not None and other is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __sub__(self, other) -> Value:
         if isinstance(other, Value):
@@ -251,13 +308,14 @@ class Value(Generic[T]):
                  if self.value is not None and other.value is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
+                              {**self.meta, **other.meta},
                               self.messages + other.messages)
         else:
             return self.__class__(([(self.value - other
                  if self.value is not None and other is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __mul__(self, other) -> Value:
         if isinstance(other, Value):
@@ -265,13 +323,14 @@ class Value(Generic[T]):
                  if self.value is not None and other.value is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
+                              {**self.meta, **other.meta},
                               self.messages + other.messages)
         else:
             return self.__class__(([(self.value * other
                  if self.value is not None and other is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __truediv__(self, other) -> Value:
         if isinstance(other, Value):
@@ -279,13 +338,14 @@ class Value(Generic[T]):
                  if self.value is not None and other.value is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
+                              {**self.meta, **other.meta},
                               self.messages + other.messages)
         else:
             return self.__class__(([(self.value / other
                  if self.value is not None and other is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __floordiv__(self, other) -> Value:
         if isinstance(other, Value):
@@ -293,13 +353,14 @@ class Value(Generic[T]):
                  if self.value is not None and other.value is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
+                              {**self.meta, **other.meta},
                               self.messages + other.messages)
         else:
             return self.__class__(([(self.value // other
                  if self.value is not None and other is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __pow__(self, other) -> Value:
         if isinstance(other, Value):
@@ -307,13 +368,14 @@ class Value(Generic[T]):
                  if self.value is not None and other.value is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
+                              {**self.meta, **other.meta},
                               self.messages + other.messages)
         else:
             return self.__class__(([(self.value ** other
                  if self.value is not None and other is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __mod__(self, other) -> Value:
         if isinstance(other, Value):
@@ -321,13 +383,14 @@ class Value(Generic[T]):
                  if self.value is not None and other.value is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
+                              {**self.meta, **other.meta},
                               self.messages + other.messages)
         else:
             return self.__class__(([(self.value % other
                  if self.value is not None and other is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __divmod__(self, other) -> Value:
         if isinstance(other, Value):
@@ -335,33 +398,34 @@ class Value(Generic[T]):
                  if self.value is not None and other.value is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
+                              {**self.meta, **other.meta},
                               self.messages + other.messages)
         else:
             return self.__class__(([(divmod(self.value, other)
                  if self.value is not None and other is not None
                  else None)]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __neg__(self) -> Value:
         return self.__class__(([-self.value if self.value is not None else None]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __pos__(self) -> Value:
         return self.__class__(([+self.value if self.value is not None else None]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __abs__(self) -> Value:
         return self.__class__(([abs(self.value) if self.value is not None else None]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
     def __round__(self, ndigits=None) -> Value:
         return self.__class__(([round(self.value, ndigits) if self.value is not None else None]
                     + (self.values[1:] if len(self.values) > 1 else [])),
-                              self.messages)
+                              self.meta, self.messages)
 
 
     # object.__matmul__(self, other)
@@ -404,54 +468,10 @@ class Value(Generic[T]):
     # object.__floor__(self)
     # object.__ceil__(self)
 
-
 # -----------------------------------------------------------------------------
 
 
-class ValueList():
-    """
-    List of Values objects.
-
-    Of each Value object: only first value in stack will be used; rest of
-    stack will be ignored.
-    """
-    def __init__(self, values:List[Value]=None):
-        self._value_items = []
-        if values is not None:
-            for value in values:
-                self.add(value)
-
-    def add(self, value:Value) -> ValueList:
-        if not isinstance(value, Value):
-            raise TypeError("value_messages attribute must be a Value object (now value_messages type is {})".format(type(value)))
-
-        self._value_items.append(value)
-        return self
-
-    @property
-    def items(self) -> List[Value]:
-        return self._value_items
-
-    @items.setter
-    def items(self, _):
-        raise PermissionError("The items property is read only")
-
-    @property
-    def values(self) -> List[Any]:
-        return [v.value for v in self._value_items if v.value is not None]
-
-    @values.setter
-    def values(self, _):
-        raise PermissionError("The values property is read only")
-
-    @property
-    def messages(self) -> List[Any]:
-        "Concaternate messages of objects."
-        messages_list = []
-        for v in self._value_items:
-            messages_list = messages_list + v.messages
-        return list_remove_duplicates(messages_list)
-
-    @messages.setter
-    def messages(self, _):
-        raise PermissionError("The messages property is read only")
+class Message(Value):
+    def __init__(self, messages:List[str]|str=None) -> None:
+        super().__init__(None, None, messages)
+        self.__class__ = Value

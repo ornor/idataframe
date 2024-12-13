@@ -36,3 +36,6 @@ flights_df = pd.read_csv("data/flights.csv").drop(columns=[])
 
 healthexp_df = pd.read_csv("data/healthexp.csv").drop(columns=[])
 # display(healthexp_df)
+
+presidents_df = pd.read_csv("data/presidents.csv").drop(columns=[])
+# display(presidents_df)
