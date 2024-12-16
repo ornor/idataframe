@@ -11,7 +11,7 @@ __all__ = [
             'map_fn', 'replace_na',
             'stack_sum', 'stack_product', 'stack_concat', 'stack_reverse',
                 'stack_reverse',
-            'if_str_match', 'elif_str_match', 'format_str',
+            'if_str_match', 'elif_str_match', 'format_str_by_groups',
           ]
 
 def print_(txt:str):
@@ -216,10 +216,10 @@ def if_str_match(regexp:str, else_if:bool=False):
 def elif_str_match(regexp:str, else_if=True):
     return if_str_match(regexp, else_if)
 
-def format_str(fmt_str:str):
+def format_str_by_groups(fmt_str:str):
     def fn(v:Value[str]) -> Value[str]:
         if _check_break_fn(v): return v
-        text, stack = v.unstack(1); print('........ format_str')
+        text, stack = v.unstack(1)
         if _META_STR_MATCH_GROUPS in v:
             return Value(fmt_str.format(**v[_META_STR_MATCH_GROUPS])) ^ stack
         else:

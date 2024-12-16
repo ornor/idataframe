@@ -48,11 +48,11 @@ email3 = "^(?P<username>[a-zA-Z][a-zA-Z0-9._%+\-]*)!(?P<domain>[a-zA-Z][a-zA-Z.\
 (it.Value('j@ravv.nl')                                              | debug
     | it.parse_str                                                  | debug
     | it.if_str_match(email1)                                       | debug
-        | it.format_str('{username}###{domain}')                    | debug
+        | it.format_str_by_groups('{username}###{domain}')          | debug
     | it.elif_str_match(email2)                                     | debug
-        | it.format_str('{username}@@@{domain}')                    | debug
+        | it.format_str_by_groups('{username}@@@{domain}')          | debug
     | it.elif_str_match(email3)                                     | debug
-        | it.format_str('{username}!!!{domain}')                    | debug
+        | it.format_str_by_groups('{username}!!!{domain}')          | debug
     | it.else_                                                      | debug
     | it.end_if                                                     | debug
 )
