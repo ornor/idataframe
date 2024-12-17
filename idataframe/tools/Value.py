@@ -6,9 +6,6 @@ import pandas as pd
 
 from idataframe.tools import list_remove_duplicates
 
-__all__ = ['na', 'is_na',
-           'Value', 'Message']
-
 
 # -----------------------------------------------------------------------------
 
@@ -186,7 +183,7 @@ class Value(Generic[T]):
     def copy(self):
         return self.__class__(self.values, self.meta, self.messages)
 
-    def bind(self, func: Callable[Value, Value]) -> Value:
+    def pipe(self, func: Callable[Value, Value]) -> Value:
         try:
             new_value_obj = func(self)
         except Exception as e:
@@ -205,8 +202,8 @@ class Value(Generic[T]):
                          self.messages + new_value_obj.messages)
 
     def __or__(self, func: Callable[Value, Value]) -> Value:
-        #  alias of bind method: "|"
-        return self.bind(func)
+        #  alias of pipe method: "|"
+        return self.pipe(func)
 
     __match_args__ = ("value",)
 
