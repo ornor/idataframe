@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
-from functools import reduce, wraps
-from typing import Callable, Any, Tuple
+import functools
+from typing import Callable, Any, Tuple, List
 import operator
 import textwrap
 
@@ -92,26 +92,48 @@ class ValuePipeLine(object):
                 or if_value == self.META_IF_PERMANENT_FALSE)
 
     def _register_pipe_fn(self,
-                  fn_title:str,
+                  fn_name:str,
+                  fn_args:Any|List[Any]=None,
                   manual_break:bool=False):
         repr_left = repr(Value('dummy')).split('Value')[0]
+        title_string = str(fn_name) + '('
+        if fn_args is not None:
+            if not isinstance(fn_args, list):
+                fn_args = [fn_args]
+            sep = ', '
+            for fn_arg in fn_args:
+                fn_arg_str = repr(fn_arg)
+                if len(fn_arg_str) > 40:
+                    title_string += "{} ... {}".format(
+                            fn_arg_str[:19], fn_arg_str[-19:])
+                else:
+                    title_string += "{}".format(fn_arg_str)
+                title_string += sep
+            title_string = title_string[:-len(sep)]
+        title_string += ')'
         def decorator(fn):
-            @wraps(fn)
+            @functools.wraps(fn)
             def wrapper(v:Value[Any]) -> Value[Any]:
                 if self._check_break_fn(v) and not manual_break:
                     return_value = v
                 else:
-                    return_value = fn(v)
+                    return_value = fn(v)    # excecute pipe
                     if self.META_DEBUG in v:
                         if_value = self._get_if(v)
-                        if if_value == True:
-                            print('- {}\n    {}'.format(
-                                fn_title,
-                                '\n    '.join(textwrap.wrap(repr(v).lstrip(repr_left),
-                                              width=50))
-                            ))
+                        if (if_value == self.META_IF_TRUE
+                            or if_value is None):
+                            if v[self.META_DEBUG] == True:
+                                print('• {}\n    {}'.format(
+                                    title_string,
+                                    '\n    '.join(textwrap.wrap(repr(
+                                    return_value).lstrip(repr_left), width=50))
+                                ))
+                            else:
+                                print('• {}\n    {}'.format(
+                                    title_string, repr(return_value.value)
+                                ))
                         else:
-                            print('- {}'.format(fn_title))
+                            print('- {}'.format(title_string))
                 return return_value
             self._add_pipe(wrapper)
             return wrapper
@@ -119,6 +141,7 @@ class ValuePipeLine(object):
 
     def _if_value_valid_fn(self,
                            fn_title:str,
+                           fn_args:Any|List[Any],
                            test_valid_fn:Callable[Value[Any], Tuple[bool, Any]],
                            if_true_fn:Callable[[Value[Any], Any], Value[Any]],
                            if_false_fn:Callable[[Value[Any], Any], Value[Any]],
@@ -146,7 +169,7 @@ class ValuePipeLine(object):
             Wrapping function usable as Value function.
 
         """
-        @self._register_pipe_fn(fn_title, manual_break=True)
+        @self._register_pipe_fn(fn_title, fn_args, manual_break=True)
         def fn(v: Value[Any]) -> Value[Any]:
             v = ((self._replace_if(v, self.META_IF_TRUE)
                  if self._get_if(v) == self.META_IF_FALSE
@@ -167,7 +190,9 @@ class ValuePipeLine(object):
 
     # -------------------------------------------------------------------------
 
-    def debug(self, set_on:bool=True) -> ValuePipeLine:
+    def debug(self,
+              show_value_obj:bool=False,
+              set_on:bool=True) -> ValuePipeLine:
         """
         Turn debug mode to on or off.
 
@@ -181,22 +206,31 @@ class ValuePipeLine(object):
         ValuePipeLine
             self
         """
-        # TODO   decorator???
         repr_left = repr(Value('dummy')).split('Value')[0]
         def fn(v:Value[Any]):
             if set_on:
-                v[self.META_DEBUG] = True
-                print('\n- debug on\n    {}'.format(repr(v).lstrip(repr_left)))
+                if show_value_obj:
+                    print('\nDEBUG ON\n    {}'.format(
+                        repr(v).lstrip(repr_left)))
+                else:
+                    print('\nDEBUG ON\n    {}'.format(
+                        repr(v.value)))
+                v[self.META_DEBUG] = show_value_obj
             else:
                 if self.META_DEBUG in v:
                     del v[self.META_DEBUG]
-                print('- debug off\n    {}\n'.format(repr(v).lstrip(repr_left)))
+                if show_value_obj:
+                    print('\nDEBUG OFF\n    {}'.format(
+                        repr(v).lstrip(repr_left)))
+                else:
+                    print('\nDEBUG OFF\n    {}'.format(
+                        repr(v.value)))
             return v
         self._add_pipe(fn)
         return self
 
     def log(self, txt:str=None):
-        @self._register_pipe_fn('log(' + txt + ')')
+        @self._register_pipe_fn('log', txt)
         def fn(v:Value[Any]) -> Value[Any]:
             if txt is None:
                 print(v)
@@ -252,7 +286,7 @@ class ValuePipeLine(object):
     # -------------------------------------------------------------------------
 
     def change(self, new_value):
-        @self._register_pipe_fn('change(' + new_value + ')')
+        @self._register_pipe_fn('change', new_value)
         def fn(v:Value[Any]) -> Value[Any]:
             _, stack = v.unstack(1)
             return Value(new_value) ^ stack
@@ -296,10 +330,10 @@ class ValuePipeLine(object):
                 return Message('Error parsing str: {}'.format(val)) ^ stack
         return self
 
-    # -----------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
 
     def map_fn(self, map_fn):
-        @self._register_pipe_fn('map_fn(...)')
+        @self._register_pipe_fn('map_fn')
         def fn(v:Value[Any]) -> Value[Any]:
             val, stack = v.unstack(1)
             try:
@@ -309,7 +343,7 @@ class ValuePipeLine(object):
         return self
 
     def replace_na(self, replace_value):
-        @self._register_pipe_fn('replace_na(' + replace_value + ')')
+        @self._register_pipe_fn('replace_na', replace_value)
         def fn(v:Value[Any]) -> Value[Any]:
             val, stack = v.unstack(1)
             return Value(replace_value if is_na(val) else val) ^ stack
@@ -320,19 +354,19 @@ class ValuePipeLine(object):
     def stack_sum(self):
         @self._register_pipe_fn('stack_sum')
         def fn(v:Value[float|int]) -> Value[float|int]:
-            return Value(reduce(operator.add, v.values, 0))
+            return Value(functools.reduce(operator.add, v.values, 0))
         return self
 
     def stack_product(self):
         @self._register_pipe_fn('stack_product')
         def fn(v:Value[float|int]) -> Value[float|int]:
-            return Value(reduce(operator.mul, v.values, 1))
+            return Value(functools.reduce(operator.mul, v.values, 1))
         return self
 
     def stack_concat(self):
         @self._register_pipe_fn('stack_concat')
         def fn(v:Value[str]) -> Value[str]:
-            return Value(reduce(operator.concat, v.values, ''))
+            return Value(functools.reduce(operator.concat, v.values, ''))
         return self
 
     def stack_reverse(self):
@@ -342,13 +376,13 @@ class ValuePipeLine(object):
         return self
 
     def stack_map_fn(self, map_fn):
-        @self._register_pipe_fn('stack_map_fn(...)')
+        @self._register_pipe_fn('stack_map_fn')
         def fn(v:Value[Any]) -> Value[Any]:
             return Value(list(map(map_fn, v.values)))
         return self
 
     def stack_replace_na(self, replace_value):
-        @self._register_pipe_fn('stack_replace_na(' + replace_value + ')')
+        @self._register_pipe_fn('stack_replace', replace_value)
         def fn(v:Value) -> Value:
             return Value([(replace_value if is_na(x) else x) for x in v.values])
         return self
@@ -380,8 +414,8 @@ class ValuePipeLine(object):
         def if_false_fn(v, test_data): return v
 
         fn_title = ('el' if else_if else '') + 'if_str_match'
-        fn_title += '(...)'
-        self._if_value_valid_fn(fn_title, test_valid_fn,
+        fn_args = regexp
+        self._if_value_valid_fn(fn_title, fn_args, test_valid_fn,
                                   if_true_fn, if_false_fn, else_if)
         return self
 
@@ -389,7 +423,7 @@ class ValuePipeLine(object):
         return self.if_str_match(regexp, else_if)
 
     def format_str_by_groups(self, fmt_str:str):
-        @self._register_pipe_fn('format_str_by_groups(' + fmt_str + ')')
+        @self._register_pipe_fn('format_str_by_groups', fmt_str)
         def fn(v:Value[str]) -> Value[str]:
             text, stack = v.unstack(1)
             if self.META_STR_MATCH_GROUPS in v:
@@ -413,8 +447,8 @@ class ValuePipeLine(object):
         def if_false_fn(v, test_data): return v
 
         fn_title = ('el' if else_if else '') + 'if_value_greater_than'
-        fn_title += '({})'.format(greater_than)
-        self._if_value_valid_fn(fn_title, test_valid_fn,
+        fn_args = greater_than
+        self._if_value_valid_fn(fn_title, fn_args, test_valid_fn,
                                   if_true_fn, if_false_fn, else_if)
         return self
 
@@ -433,8 +467,8 @@ class ValuePipeLine(object):
         def if_false_fn(v, test_data): return v
 
         fn_title = ('el' if else_if else '') + 'if_value_greater_equal_than'
-        fn_title += '({})'.format(greater_equal_than)
-        self._if_value_valid_fn(fn_title, test_valid_fn,
+        fn_args = greater_equal_than
+        self._if_value_valid_fn(fn_title, fn_args, test_valid_fn,
                                   if_true_fn, if_false_fn, else_if)
         return self
 
@@ -454,8 +488,8 @@ class ValuePipeLine(object):
         def if_false_fn(v, test_data): return v
 
         fn_title = ('el' if else_if else '') + 'if_value_less_than'
-        fn_title += '({})'.format(less_than)
-        self._if_value_valid_fn(fn_title, test_valid_fn,
+        fn_args = less_than
+        self._if_value_valid_fn(fn_title, fn_args, test_valid_fn,
                                   if_true_fn, if_false_fn, else_if)
         return self
 
@@ -475,8 +509,8 @@ class ValuePipeLine(object):
         def if_false_fn(v, test_data): return v
 
         fn_title = ('el' if else_if else '') + 'if_value_less_equal_than'
-        fn_title += '({})'.format(less_equal_than)
-        self._if_value_valid_fn(fn_title, test_valid_fn,
+        fn_args = less_equal_than
+        self._if_value_valid_fn(fn_title, fn_args, test_valid_fn,
                                   if_true_fn, if_false_fn, else_if)
         return self
 
@@ -495,8 +529,8 @@ class ValuePipeLine(object):
         def if_false_fn(v, test_data): return v
 
         fn_title = ('el' if else_if else '') + 'if_value_equal_to'
-        fn_title += '({})'.format(equal_to)
-        self._if_value_valid_fn(fn_title, test_valid_fn,
+        fn_args = equal_to
+        self._if_value_valid_fn(fn_title, fn_args, test_valid_fn,
                                   if_true_fn, if_false_fn, else_if)
         return self
 
